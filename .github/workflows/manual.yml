@@ -1,0 +1,31 @@
+name: Deploy Django to VPS
+
+on:
+  push:
+    branches:
+      - master  # or your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy to VPS
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << EOF
+          cd ${{ secrets.VPS_PROJECT_DIR }}  # Use directory from secrets
+          git pull origin ${{ secrets.VPS_DEPLOY_BRANCH }}  # Use branch from secrets
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py migrate
+          python manage.py collectstatic --noinput
+          sudo systemctl restart gunicorn
+        EOF
